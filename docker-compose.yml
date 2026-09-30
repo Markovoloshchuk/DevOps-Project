@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  core_service:
+    build:
+      context: ./core_service
+    ports:
+      - "8000:8000"
+    volumes:
+      - sqlite_data:/app
+
+  analytics_service:
+    build:
+      context: ./analytics_service
+    ports:
+      - "8001:8001"
+    environment:
+      - CORE_SERVICE_URL=http://core_service:8000
+    depends_on:
+      - core_service
+
+volumes:
+  sqlite_data:
