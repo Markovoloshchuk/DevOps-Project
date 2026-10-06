@@ -1,6 +1,7 @@
 import os
-from fastapi import FastAPI
+
 import httpx
+from fastapi import FastAPI
 
 app = FastAPI(title="Analytics Service")
 
@@ -14,7 +15,7 @@ def check_core_health():
         response = httpx.get(f"{CORE_SERVICE_URL}/")
         core_status = response.json().get("status", "unknown")
     except Exception as e:
-        core_status = f"unreachable ({str(e)})"
+        core_status = f"unreachable ({e!s})"
 
     return {
         "service": "Analytics Service",

@@ -1,0 +1,9 @@
+# Конфігурація Ruff для CI (ruff check .)
+
+[lint.per-file-ignores]
+# B008: Depends() в аргументах за замовчуванням — офіційний ідіоматичний
+# патерн FastAPI, ігноруємо свідомо
+"core_service/main.py" = ["B008"]
+# BLE001: навмисний catch Exception — /health має відповідати,
+# навіть якщо core_service недоступний
+"analytics_service/main.py" = ["BLE001"]
