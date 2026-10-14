@@ -1,7 +1,8 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 
-from database import Event, SessionLocal
+from database import Event, SessionLocal, init_db
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
@@ -14,7 +15,15 @@ DEFAULT_EVENT_LEVEL = os.getenv("DEFAULT_EVENT_LEVEL", "info")
 logging.basicConfig(level=LOG_LEVEL)
 logger = logging.getLogger("core_service")
 
-app = FastAPI(title="Core Service — Журнал подій")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ініціалізація БД при старті пода (з повторними спробами — див. database.py)
+    init_db()
+    yield
+
+
+app = FastAPI(title="Core Service — Журнал подій", lifespan=lifespan)
 
 
 def get_db():
