@@ -1,16 +1,25 @@
+import pytest
 from fastapi.testclient import TestClient
 from main import app
 
-client = TestClient(app)
+
+@pytest.fixture(scope="module")
+def client():
+    # Контекстний менеджер запускає lifespan -> init_db() з ретраями,
+    # тому таблиці гарантовано створені перед тестами.
+    # Без `with` TestClient lifespan не викликає — у цьому й була причина
+    # падіння в CI: таблиця "events" не існувала.
+    with TestClient(app) as c:
+        yield c
 
 
-def test_read_root():
+def test_read_root(client):
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "service": "Core Service"}
 
 
-def test_health_shows_config():
+def test_health_shows_config(client):
     # /health відображає конфігурацію з ConfigMap (APP_ENV тощо)
     response = client.get("/health")
     assert response.status_code == 200
@@ -22,7 +31,7 @@ def test_health_shows_config():
     assert "default_event_level" in data
 
 
-def test_create_and_read_event():
+def test_create_and_read_event(client):
     # Тест створення нового запису журналу
     create_response = client.post(
         "/events/",
@@ -40,6 +49,6 @@ def test_create_and_read_event():
     assert get_response.json()["description"] == "Планове вимкнення"
 
 
-def test_read_missing_event():
+def test_read_missing_event(client):
     response = client.get("/events/999999")
     assert response.status_code == 404
