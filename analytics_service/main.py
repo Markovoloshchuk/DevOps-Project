@@ -10,6 +10,8 @@ APP_ENV = os.getenv("APP_ENV", "development")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 CORE_SERVICE_URL = os.getenv("CORE_SERVICE_URL", "http://core_service:8000")
 CORE_TIMEOUT = float(os.getenv("CORE_TIMEOUT", "3.0"))
+# Версія образу (збігається з тегом 1.0.0 / 1.1.0 — запечена в образ через ARG/ENV).
+APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
 
 logging.basicConfig(level=LOG_LEVEL)
 logger = logging.getLogger("analytics_service")
@@ -28,6 +30,7 @@ def check_core_health():
 
     return {
         "service": "Analytics Service",
+        "version": APP_VERSION,
         "app_env": APP_ENV,
         "log_level": LOG_LEVEL,
         "core_service_status": core_status,

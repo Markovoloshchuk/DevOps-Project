@@ -16,6 +16,7 @@ def test_health_shows_config():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
+    assert "version" in data
     assert "app_env" in data
     assert "log_level" in data
     assert "default_event_level" in data

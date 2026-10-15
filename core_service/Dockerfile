@@ -7,6 +7,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Версія образу (для демонстрації оновлення 1.0.0 -> 1.1.0 через /health).
+# CI передає --build-arg APP_VERSION=<версія з git-тега>, локально — дефолт 1.0.0.
+ARG APP_VERSION=1.0.0
+ENV APP_VERSION=${APP_VERSION}
+
 EXPOSE 8000
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--ws", "none"]

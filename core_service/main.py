@@ -11,6 +11,9 @@ from sqlalchemy.orm import Session
 APP_ENV = os.getenv("APP_ENV", "development")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 DEFAULT_EVENT_LEVEL = os.getenv("DEFAULT_EVENT_LEVEL", "info")
+# Версія образу: тестувальники / CI можуть перевизначити через змінну оточення,
+# демонстрація оновлення 1.0.0 -> 1.1.0 перевіряється через /health.
+APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
 
 logging.basicConfig(level=LOG_LEVEL)
 logger = logging.getLogger("core_service")
@@ -45,6 +48,7 @@ def health():
     return {
         "status": "ok",
         "service": "Core Service",
+        "version": APP_VERSION,
         "app_env": APP_ENV,
         "log_level": LOG_LEVEL,
         "default_event_level": DEFAULT_EVENT_LEVEL,

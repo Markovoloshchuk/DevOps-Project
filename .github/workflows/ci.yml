@@ -91,6 +91,8 @@ jobs:
           push: false
           load: true
           tags: ${{ matrix.service }}:ci
+          build-args: |
+            APP_VERSION=ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Trivy vulnerability scan
@@ -132,6 +134,14 @@ jobs:
             type=sha,format=long
             type=raw,value=latest
             type=semver,pattern={{version}}
+      - name: Resolve app version for build-arg
+        id: appver
+        run: |
+          if [[ '${{ github.ref }}' == refs/tags/v* ]]; then
+            echo "version=${{ github.ref_name }}" | sed 's/^version=v/version=/' >> "$GITHUB_OUTPUT"
+          else
+            echo "version=dev-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -139,5 +149,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.appver.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
