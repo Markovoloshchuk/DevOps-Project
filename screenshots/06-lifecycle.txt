@@ -1,0 +1,62 @@
+## 6a. Самовідновлення
+## 6a. Самовідновлення: видалення пода
+$ kubectl delete pod core-service-58b77bc455-5lncp -n incident-journal
+pod "core-service-58b77bc455-5lncp" deleted from incident-journal namespace
+
+
+$ kubectl get pods -n incident-journal  # після самовідновлення
+NAME                                 READY   STATUS    RESTARTS   AGE
+analytics-service-7765bfbd68-5t8qr   1/1     Running   0          5m53s
+analytics-service-7765bfbd68-gxw6z   1/1     Running   0          5m53s
+core-service-58b77bc455-7489s        1/1     Running   0          5m53s
+core-service-58b77bc455-mkbh8        1/1     Running   0          4m1s
+core-service-58b77bc455-qnj9d        1/1     Running   0          51s
+postgres-579cb66d6c-c9k79            1/1     Running   0          5m54s
+
+## 6b. Масштабування до 3 реплік
+$ kubectl scale deployment core-service -n incident-journal --replicas=3
+deployment.apps/core-service scaled
+NAME                                 READY   STATUS    RESTARTS   AGE     IP            NODE       NOMINATED NODE   READINESS GATES
+analytics-service-7765bfbd68-5t8qr   1/1     Running   0          5m53s   10.244.0.15   minikube   <none>           <none>
+analytics-service-7765bfbd68-gxw6z   1/1     Running   0          5m53s   10.244.0.14   minikube   <none>           <none>
+core-service-58b77bc455-7489s        1/1     Running   0          5m53s   10.244.0.13   minikube   <none>           <none>
+core-service-58b77bc455-mkbh8        1/1     Running   0          4m1s    10.244.0.16   minikube   <none>           <none>
+core-service-58b77bc455-qnj9d        1/1     Running   0          51s     10.244.0.17   minikube   <none>           <none>
+postgres-579cb66d6c-c9k79            1/1     Running   0          5m54s   10.244.0.11   minikube   <none>           <none>
+
+$ kubectl get endpoints core-service -n incident-journal  # трафік на 3 поди
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME           ENDPOINTS                                            AGE
+core-service   10.244.0.13:8000,10.244.0.16:8000,10.244.0.17:8000   5m53s
+
+## 6c. Оновлення 1.0.0 -> 1.1.0 (rolling update)
+$ kubectl set image deployment/core-service -n incident-journal core-service=ghcr.io/markovoloshchuk/core_service:1.1.0
+deployment.apps/core-service image updated
+$ kubectl rollout status deployment/core-service -n incident-journal
+deployment "core-service" successfully rolled out
+$ kubectl rollout history deployment/core-service -n incident-journal
+deployment.apps/core-service 
+REVISION  CHANGE-CAUSE
+2         <none>
+3         <none>
+
+
+$ kubectl get pods -l app.kubernetes.io/name=core-service -o ...image (перевірка 1.0.0 після відкату)
+core-service-58b77bc455-5vrrg ghcr.io/markovoloshchuk/core_service:1.0.0
+core-service-58b77bc455-hx4ml ghcr.io/markovoloshchuk/core_service:1.0.0
+
+## 6d. Відкат
+$ kubectl rollout undo deployment/core-service -n incident-journal
+deployment.apps/core-service rolled back
+deployment.apps/core-service 
+REVISION  CHANGE-CAUSE
+2         <none>
+3         <none>
+
+
+## 6e. Доступність під час оновлення (5 запитів поспіль — всі ok)
+{"status":"ok","service":"Core Service","app_env":"production"}
+{"status":"ok","service":"Core Service","app_env":"production"}
+{"status":"ok","service":"Core Service","app_env":"production"}
+{"status":"ok","service":"Core Service","app_env":"production"}
+{"status":"ok","service":"Core Service","app_env":"production"}

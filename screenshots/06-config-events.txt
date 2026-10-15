@@ -1,0 +1,29 @@
+## 5d. ConfigMap і Secret справді потрапили в контейнер
+$ kubectl exec -n incident-journal deploy/core-service -- env | grep -E '^(APP_ENV|LOG_LEVEL|DEFAULT_EVENT_LEVEL|CORE_TIMEOUT|DB_)' | sort
+APP_ENV=production
+CORE_TIMEOUT=3.0
+DB_HOST=postgres
+DB_NAME=events_db
+DB_PASSWORD=lab-only-password
+DB_PORT=5432
+DB_USER=app
+DEFAULT_EVENT_LEVEL=info
+LOG_LEVEL=INFO
+
+$ curl http://127.0.0.1:18080/health   # через kubectl port-forward svc/core-service 18080:8000
+{"status":"ok","service":"Core Service","app_env":"production","log_level":"INFO","default_event_level":"info"}
+$ curl http://127.0.0.1:18081/health   # analytics через port-forward 18081:8001
+{"service":"Analytics Service","app_env":"production","log_level":"INFO","core_service_status":"ok"}
+
+## Доступ з хоста через NodePort (5c)
+$ minikube service core-service -n incident-journal --url
+http://127.0.0.1:39675
+
+## Дані в PostgreSQL + аналітика
+$ curl -X POST '.../events/?title=network-down&description=switch failure' ...
+{"level":"info","id":4,"title":"network-down","description":"switch failure"}
+$ curl .../events/ -> 6 записів (id 1..6, всі level=info — дефолт із ConfigMap DEFAULT_EVENT_LEVEL)
+$ curl .../stats -> {"total_events":6,"by_level":{"info":6}}
+Примітка: БД перестворена разом із чистим розгортанням (delete namespace), id 1..3 —
+набір з попереднього запуску, 4..6 — створені в поточному для перевірки.
+

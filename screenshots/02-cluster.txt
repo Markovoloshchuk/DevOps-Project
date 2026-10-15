@@ -1,0 +1,29 @@
+=== 2c. Стан вузла ===
+$ kubectl get nodes
+NAME       STATUS   ROLES           AGE   VERSION
+minikube   Ready    control-plane   14h   v1.37.0
+
+=== 2c. Системні поди (kube-system) ===
+$ kubectl get pods -n kube-system
+NAME                               READY   STATUS    RESTARTS        AGE
+coredns-559f6c778d-zkfxq           1/1     Running   1 (8m49s ago)   14h
+etcd-minikube                      1/1     Running   1 (8m49s ago)   14h
+kindnet-7j4j7                      1/1     Running   1 (8m49s ago)   14h
+kube-apiserver-minikube            1/1     Running   1 (8m49s ago)   14h
+kube-controller-manager-minikube   1/1     Running   1 (8m49s ago)   14h
+kube-proxy-xvc5v                   1/1     Running   1 (8m49s ago)   14h
+kube-scheduler-minikube            1/1     Running   1 (8m49s ago)   14h
+metrics-server-768f9f6999-j4l5m    1/1     Running   2 (8m8s ago)    14h
+storage-provisioner                1/1     Running   2 (8m10s ago)   14h
+
+=== 2d. Доповнення ===
+$ minikube addons list | grep -E "ingress|metrics-server"
+│ [32mingress[0m                     │ [32mminikube[0m │ [32menabled ✅[0m │ [32mKubernetes[0m                             │
+│ ingress-dns                 │ minikube │ disabled   │ minikube                               │
+│ [32mmetrics-server[0m              │ [32mminikube[0m │ [32menabled ✅[0m │ [32mKubernetes[0m                             │
+
+$ kubectl get pods -n ingress-nginx
+NAME                                       READY   STATUS      RESTARTS        AGE
+ingress-nginx-admission-create-p6c2q       0/1     Completed   0               14h
+ingress-nginx-admission-patch-8w8h5        0/1     Completed   1 (14h ago)     14h
+ingress-nginx-controller-d7cd8c989-4nbrt   1/1     Running     1 (8m49s ago)   14h

@@ -1,0 +1,40 @@
+# 5a. Розгортання однією командою
+$ kubectl apply -f k8s/
+namespace/incident-journal created
+configmap/app-config created
+secret/db-credentials created
+persistentvolumeclaim/postgres-pvc created
+deployment.apps/postgres created
+service/postgres created
+deployment.apps/core-service created
+service/core-service created
+deployment.apps/analytics-service created
+service/analytics-service created
+
+## 5b. Перелік обєктів
+$ kubectl get all -n incident-journal
+NAME                                     READY   STATUS    RESTARTS   AGE
+pod/analytics-service-7765bfbd68-5t8qr   1/1     Running   0          21s
+pod/analytics-service-7765bfbd68-gxw6z   1/1     Running   0          21s
+pod/core-service-58b77bc455-5lncp        1/1     Running   0          21s
+pod/core-service-58b77bc455-7489s        1/1     Running   0          21s
+pod/postgres-579cb66d6c-c9k79            1/1     Running   0          22s
+
+NAME                        TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+service/analytics-service   NodePort    10.98.210.163    <none>        8001:30081/TCP   21s
+service/core-service        NodePort    10.110.169.247   <none>        8000:30080/TCP   21s
+service/postgres            ClusterIP   10.100.146.120   <none>        5432/TCP         22s
+
+NAME                                READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/analytics-service   2/2     2            2           21s
+deployment.apps/core-service        2/2     2            2           22s
+deployment.apps/postgres            1/1     1            1           22s
+
+NAME                                           DESIRED   CURRENT   READY   AGE
+replicaset.apps/analytics-service-7765bfbd68   2         2         2       21s
+replicaset.apps/core-service-58b77bc455        2         2         2       22s
+replicaset.apps/postgres-579cb66d6c            1         1         1       22s
+
+$ kubectl get pvc -n incident-journal
+NAME           STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+postgres-pvc   Bound    pvc-d9801bb7-878b-4cb0-89d7-2ac4ad15aa6e   1Gi        RWO            standard       <unset>                 22s

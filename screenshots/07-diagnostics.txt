@@ -1,0 +1,47 @@
+# Lab3 — діагностика застосунку (пункт 7)
+
+## 7a. Навмисно зламаний тег образу
+$ kubectl set image deployment/core-service -n incident-journal core-service=ghcr.io/markovoloshchuk/core_service:bad-tag
+deployment.apps/core-service image updated
+$ kubectl get pods -n incident-journal -l app.kubernetes.io/name=core-service
+NAME                            READY   STATUS             RESTARTS   AGE
+core-service-58b77bc455-5vrrg   1/1     Running            0          2m31s
+core-service-58b77bc455-hx4ml   1/1     Running            0          2m24s
+core-service-5fc79b5c74-4rfrn   0/1     ImagePullBackOff   0          20s
+
+## 7b. Причина через describe + Events
+$ kubectl describe pod -n incident-journal -l app.kubernetes.io/name=core-service | grep -A6 'bad-tag'
+    Image:          ghcr.io/markovoloshchuk/core_service:bad-tag
+    State:          Waiting
+      Reason:       ErrImagePull
+    Ready:          False
+
+$ kubectl get events -n incident-journal --sort-by=.lastTimestamp | grep -E 'BackOff|Failed|bad-tag'
+Back-off pulling image "ghcr.io/markovoloshchuk/core_service:bad-tag"
+Warning Failed  pod/core-service-5fc79b5c74-4rfrn  Error: ImagePullBackOff
+Warning Failed  pod/core-service-5fc79b5c74-4rfrn  Failed to pull image "ghcr.io/markovoloshchuk/core_service:bad-tag": ... not found
+Warning Failed  pod/core-service-5fc79b5c74-4rfrn  Error: ErrImagePull
+
+## 7c. Логи контейнера + інтерактивний вхід
+$ kubectl logs -n incident-journal deploy/core-service --tail=8
+Found 3 pods, using pod/core-service-58b77bc455-5vrrg
+INFO:     10.244.0.15:49626 - "GET /health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:60634 - "GET /health HTTP/1.1" 200 OK
+... (health-проби 200 OK — живі репліки обслуговують трафік, битий под у Waiting)
+$ kubectl exec -n incident-journal deploy/core-service -- env | grep -E '^(APP_ENV|DB_HOST|DB_USER)='
+DB_HOST=postgres
+APP_ENV=production
+DB_USER=app
+
+## 7d. Виправлення: відкат на робочий образ
+$ kubectl rollout undo deployment/core-service -n incident-journal
+deployment.apps/core-service rolled back
+$ kubectl rollout status deployment/core-service -n incident-journal
+deployment "core-service" successfully rolled out
+$ kubectl get pods -n incident-journal
+NAME                                 READY   STATUS    RESTARTS   AGE
+analytics-service-7765bfbd68-5t8qr   1/1     Running   0          11m
+analytics-service-7765bfbd68-gxw6z   1/1     Running   0          11m
+core-service-58b77bc455-5vrrg        1/1     Running   0          4m35s
+core-service-58b77bc455-hx4ml        1/1     Running   0          4m28s
+postgres-579cb66d6c-c9k79            1/1     Running   0          11m
