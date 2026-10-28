@@ -103,7 +103,7 @@ jobs:
           ignore-unfixed: true
           severity: CRITICAL,HIGH
 
-  # ---- 5. Публікація в GHCR (push у main або створення тега v*) ----
+  # ---- 5. Публікація в GHCR (push у main) ----
   publish:
     name: Publish (${{ matrix.service }})
     needs: [ build ]
