@@ -1,13 +1,35 @@
-version: '3.8'
-
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: events_db
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d events_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   core_service:
     build:
       context: ./core_service
     ports:
       - "8000:8000"
-    volumes:
-      - sqlite_data:/app
+    environment:
+      - APP_ENV=development
+      - LOG_LEVEL=INFO
+      - DEFAULT_EVENT_LEVEL=info
+      - DB_USER=app
+      - DB_PASSWORD=app
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=events_db
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   analytics_service:
     build:
@@ -15,9 +37,12 @@ services:
     ports:
       - "8001:8001"
     environment:
+      - APP_ENV=development
+      - LOG_LEVEL=INFO
       - CORE_SERVICE_URL=http://core_service:8000
+      - CORE_TIMEOUT=3.0
     depends_on:
       - core_service
 
 volumes:
-  sqlite_data:
+  pg_data:

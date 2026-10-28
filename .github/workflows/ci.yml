@@ -29,6 +29,27 @@ jobs:
   test:
     name: Test (${{ matrix.service }})
     runs-on: ubuntu-latest
+    # core_service потребує PostgreSQL для тестів ( SQLAlchemy )
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: events_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d events_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_USER: app
+      DB_PASSWORD: app
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: events_db
     strategy:
       fail-fast: false
       matrix:
@@ -69,6 +90,8 @@ jobs:
           push: false
           load: true
           tags: ${{ matrix.service }}:ci
+          build-args: |
+            APP_VERSION=ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Trivy vulnerability scan
@@ -80,7 +103,7 @@ jobs:
           ignore-unfixed: true
           severity: CRITICAL,HIGH
 
-  # ---- 5. Публікація в GHCR (тільки push у main) ----
+  # ---- 5. Публікація в GHCR (push у main або створення тега v*) ----
   publish:
     name: Publish (${{ matrix.service }})
     needs: [ build ]
@@ -108,7 +131,15 @@ jobs:
           images: ghcr.io/${{ steps.image.outputs.owner }}/${{ matrix.service }}
           tags: |
             type=sha,format=long
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+      - name: Resolve app version for build-arg
+        id: appver
+        run: |
+          if [[ '${{ github.ref }}' == refs/tags/v* ]]; then
+            echo "version=${{ github.ref_name }}" | sed 's/^version=v/version=/' >> "$GITHUB_OUTPUT"
+          else
+            echo "version=dev-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -116,5 +147,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.appver.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

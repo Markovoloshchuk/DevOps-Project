@@ -1,0 +1,23 @@
+# Lab3 — образи застосунку (пункт 1)
+
+Локально зібрані / наявні образи з версійними тегами (без latest):
+
+$ docker images | grep -E 'core_service|analytics_service'
+ghcr.io/markovoloshchuk/analytics_service:1.0.0   ec227ec97d0d   273MB
+ghcr.io/markovoloshchuk/analytics_service:1.1.0   ec227ec97d0d   273MB
+ghcr.io/markovoloshchuk/core_service:1.0.0        77346f820bf1   290MB
+ghcr.io/markovoloshchuk/core_service:1.1.0        77346f820bf1   290MB
+
+$ minikube image ls | grep -E 'core_service|analytics|postgres'
+ghcr.io/markovoloshchuk/core_service:1.1.0
+ghcr.io/markovoloshchuk/core_service:1.0.0
+ghcr.io/markovoloshchuk/analytics_service:1.1.0
+ghcr.io/markovoloshchuk/analytics_service:1.0.0
+docker.io/library/postgres:16
+
+Примітка (1b): образи завантажені в minikube через `minikube image load`, тому
+локальний кластер працює навіть без доступу до GHCR. CI (`.github/workflows/ci.yml`)
+публікує ці ж теги в GHCR при створенні git-тега `v*` (1.0.0 -> тег v1.0.0 і т.д.);
+обидві версії задекларовані для демонстрації оновлення/відкату (1d).
+Зауваження: на момент демонстрації git-теги v1.0.0/v1.1.0 ще не запушені,
+тому публікація в GHCR очікується після `git tag + git push --tags`.
