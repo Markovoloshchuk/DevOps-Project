@@ -1,0 +1,77 @@
+namespace: incident-journal
+environment: development
+
+# Core Service
+coreService:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/markovoloshchuk/core_service
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: NodePort
+    port: 8000
+    nodePort: 30080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Analytics Service
+analyticsService:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/markovoloshchuk/analytics_service
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: NodePort
+    port: 8001
+    nodePort: 30081
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# PostgreSQL Database
+postgresql:
+  replicaCount: 1
+  image:
+    repository: postgres
+    tag: "16"
+    pullPolicy: IfNotPresent
+  auth:
+    username: "app"
+    password: "lab-only-password"
+    database: "events_db"
+  service:
+    type: ClusterIP
+    port: 5432
+  persistence:
+    enabled: true
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# App ConfigMap parameters
+configMap:
+  appEnv: "development"
+  logLevel: "DEBUG"
+  defaultEventLevel: "info"
+  coreTimeout: "3.0"
+
+# Optional Ingress (disabled by default in dev)
+ingress:
+  enabled: false
+  host: incident-journal.local

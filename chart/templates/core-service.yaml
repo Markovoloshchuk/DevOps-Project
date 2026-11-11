@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+    app.kubernetes.io/name: core-service
+spec:
+  type: {{ .Values.coreService.service.type }}
+  selector:
+    app.kubernetes.io/name: core-service
+  ports:
+    - port: {{ .Values.coreService.service.port }}
+      targetPort: http
+      nodePort: {{ .Values.coreService.service.nodePort }}
+      name: http
