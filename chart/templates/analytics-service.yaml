@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+    app.kubernetes.io/name: analytics-service
+spec:
+  type: {{ .Values.analyticsService.service.type }}
+  selector:
+    app.kubernetes.io/name: analytics-service
+  ports:
+    - port: {{ .Values.analyticsService.service.port }}
+      targetPort: http
+      nodePort: {{ .Values.analyticsService.service.nodePort }}
+      name: http

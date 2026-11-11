@@ -1,102 +1,227 @@
-# DevOps-Project — Журнал подій та інцидентів
+ # DevOps-Project — Журнал подій та інцидентів
 
 Мікросервісний застосунок на FastAPI, що складається з двох сервісів:
 
-- **`core_service`** — REST API для ведення журналу подій/інцидентів
-  (`POST /events/`, `GET /events/`, `GET /events/{id}`), зберігання в **PostgreSQL**;
-  легкий ендпоінт `GET /health` для проб і моніторингу.
-- **`analytics_service`** — аналітика журналу: `GET /health` (статус core_service)
-  та `GET /stats` (кількість записів за рівнями важливості).
+- **`core_service`** — REST API для ведення журналу подій та інцидентів:
+  - `POST /events/` — створення запису;
+  - `GET /events/` — отримання списку записів;
+  - `GET /events/{id}` — отримання запису за ID;
+  - `GET /health` — перевірка стану сервісу.
+  
+  Дані зберігаються в **PostgreSQL**.
+
+- **`analytics_service`** — сервіс аналітики журналу:
+  - `GET /health` — перевірка стану та доступності `core_service`;
+  - `GET /stats` — отримання кількості записів за рівнями важливості.
+
+---
 
 ## Локальний запуск (Docker Compose)
 
 ```bash
 docker compose up --build
+
 ```
 
-- core_service: <http://localhost:8000> (OpenAPI docs: `/docs`)
-- analytics_service: <http://localhost:8001/health>, `/stats`
-- PostgreSQL 16 з volume `pg_data`
+Після запуску сервіси доступні за адресами:
 
-## Розгортання в Kubernetes (minikube)
+* `core_service`: http://localhost:8000
+OpenAPI-документація: http://localhost:8000/docs
+* `analytics_service`: http://localhost:8001/health
+Статистика: http://localhost:8001/stats
+* PostgreSQL 16 — збереження даних у Docker volume `pg_data`.
 
-Передумова: образи опубліковані в GHCR з версійними тегами
-(`ghcr.io/markovoloshchuk/core_service:1.0.0` та `:1.1.0` — створення git-тега
-`v*` запускає CI, який публікує відповідний образ).
+---
+
+## Розгортання в Kubernetes за допомогою Helm (Лабораторна робота №4)
+
+Застосунок пакується у власний Helm-чарт, розташований у каталозі `chart/`. Це дозволяє параметризувати розгортання для різних середовищ та керувати повним життєвим циклом релізу.
+
+### Структура Helm-чарта (`chart/`)
+
+* `Chart.yaml` — метадані чарта.
+* `values.yaml` — значення за замовчуванням (розробницьке середовище).
+* `values-dev.yaml` / `values-prod.yaml` — файли значень для середовищ `dev` і `prod`.
+
+
+* `templates/` — шаблони Kubernetes-маніфестів (Deployment, Service, PVC, ConfigMap, Secret тощо).
+* `templates/_helpers.tpl` — іменовані шаблони для генерації імен та спільних міток.
+
+
+
+### Різниця між `version` та `appVersion` у `Chart.yaml`
+
+* **`version`** — версія самого Helm-чарта (наприклад, `0.1.0`). Вона змінюється під час оновлення логіки шаблонів, параметрів або структури розгортання в Kubernetes.
+* **`appVersion`** — версія самого застосунку (наприклад, `1.0.0`), яка відповідає тегу розгорнутих Docker-образів мікросервісів.
+
+---
+
+### Параметри конфігурації `values.yaml`
+
+Усі основні параметри винесені у файли значень. Нижче наведено опис основних параметрів конфігурації:
+
+| Параметр | Тип | За замовчуванням (Dev) | Опис |
+| --- | --- | --- | --- |
+| `namespace` | string | `incident-journal` | Простір імен Kubernetes для розгортання |
+| `environment` | string | `development` | Режим середовища (`development` / `production`) |
+| `coreService.replicaCount` | int | `1` (у Prod — `2`) | Кількість реплік `core_service`
+
+ |
+| `coreService.image.repository` | string | `ghcr.io/markovoloshchuk/core_service` | Репозиторій образу `core_service` |
+| `coreService.image.tag` | string | `1.0.0` | Тег образу `core_service`
+
+ |
+| `coreService.service.type` | string | `NodePort` | Тип Kubernetes Service для доступу
+
+ |
+| `coreService.service.nodePort` | int | `30080` | Зовнішній порт NodePort |
+| `analyticsService.replicaCount` | int | `1` (у Prod — `2`) | Кількість реплік `analytics_service`
+
+ |
+| `analyticsService.image.repository` | string | `ghcr.io/markovoloshchuk/analytics_service` | Репозиторій образу `analytics_service` |
+| `analyticsService.image.tag` | string | `1.0.0` | Тег образу `analytics_service`
+
+ |
+| `analyticsService.service.type` | string | `NodePort` | Тип Kubernetes Service
+
+ |
+| `analyticsService.service.nodePort` | int | `30081` | Зовнішній порт NodePort |
+| `postgresql.replicaCount` | int | `1` | Кількість реплік бази даних |
+| `postgresql.persistence.enabled` | bool | `true` | Увімкнення PersistentVolumeClaim для бази даних |
+| `postgresql.persistence.size` | string | `1Gi` | Обсяг сховища для PostgreSQL |
+| `ingress.enabled` | bool | `false` (у Prod — `true`) | Прапорець увімкнення Ingress-контролера
+
+ |
+
+---
+
+### Команди встановлення та управління релізом
+
+#### 1. Встановлення для середовища Розробки (Dev)
 
 ```bash
-minikube start --driver=docker
-minikube addons enable metrics-server
-minikube addons enable ingress
+helm install my-app chart -f chart/values-dev.yaml -n incident-journal --create-namespace
 
-# Розгортання всіх маніфестів однією командою з каталогу:
-kubectl apply -f k8s/
-
-# Стан об'єктів:
-kubectl get all -n incident-journal
-
-# Доступ до застосунку:
-#   core_service     -> http://<minikube-ip>:30080  (або minikube service core-service -n incident-journal --url)
-#   analytics_service -> http://<minikube-ip>:30081
 ```
 
-Каталог `k8s/` містить по одному файлу на об'єкт; числові префікси гарантують
-коректний порядок застосування (`namespace` → `ConfigMap`/`Secret` → `postgres`
-з PVC → сервіси застосунку).
+#### 2. Встановлення для Продакшн середовища (Prod)
 
-| Файл | Об'єкт |
-|---|---|
-| `00-namespace.yaml` | Namespace `incident-journal` |
-| `10-configmap.yaml` | ConfigMap `app-config` |
-| `11-secret.yaml` | Secret `db-credentials` |
-| `20-postgres-pvc.yaml` | PersistentVolumeClaim `postgres-pvc` (1Gi, RWO) |
-| `21-postgres-deployment.yaml` | Deployment `postgres` (PostgreSQL 16, PVC) |
-| `22-postgres-service.yaml` | Service `postgres` (ClusterIP) |
-| `30-core-deployment.yaml` | Deployment `core-service` (2 репліки, probes, resources) |
-| `31-core-service.yaml` | Service `core-service` (NodePort 30080) |
-| `40-analytics-deployment.yaml` | Deployment `analytics-service` (2 репліки) |
-| `41-analytics-service.yaml` | Service `analytics-service` (NodePort 30081) |
+```bash
+helm install my-app chart -f chart/values-prod.yaml -n incident-journal --create-namespace
+
+```
+
+#### 3. Життєвий цикл релізу
+
+* Оновлення тегу образу "на льоту" через `--set`:
+
+
+```bash
+helm upgrade my-app chart -f chart/values-dev.yaml --set coreService.image.tag="1.0.1" -n incident-journal
+
+```
+
+
+* Оновлення середовища на Production:
+
+
+```bash
+helm upgrade my-app chart -f chart/values-prod.yaml -n incident-journal
+
+```
+
+
+* Перегляд історії ревізій:
+
+
+```bash
+helm history my-app -n incident-journal
+
+```
+
+
+* Відкат (Rollback) до попередньої стабільної ревізії:
+
+
+```bash
+helm rollback my-app <revision-number> -n incident-journal
+
+```
+
+
+* Видалення релізу:
+
+
+```bash
+helm uninstall my-app -n incident-journal
+
+```
+
+
+
+---
 
 ## Конфігурація: ConfigMap та Secret
 
-### ConfigMap `app-config` (нечутливі параметри)
+### ConfigMap `app-config` — нечутливі параметри
 
 | Параметр | Значення | Призначення |
-|---|---|---|
-| `APP_ENV` | `production` | Режим роботи застосунку (відображається в `/health`) |
-| `LOG_LEVEL` | `INFO` | Рівень логування (logging в обох сервісах) |
-| `DEFAULT_EVENT_LEVEL` | `info` | Рівень важливості за замовчуванням для нових записів журналу |
-| `CORE_TIMEOUT` | `3.0` | Таймаут (с) викликів analytics → core_service |
-| `DB_HOST` | `postgres` | Хост PostgreSQL (DNS-ім'я Service) |
+| --- | --- | --- |
+| `APP_ENV` | `production` / `development` | Режим роботи застосунку |
+| `LOG_LEVEL` | `INFO` / `DEBUG` | Рівень логування в обох сервісах |
+| `DEFAULT_EVENT_LEVEL` | `info` | Рівень важливості за замовчуванням |
+| `CORE_TIMEOUT` | `3.0` | Таймаут у секундах для викликів `analytics_service` → `core_service` |
+| `DB_HOST` | `postgres` | Хост PostgreSQL (DNS-ім'я Kubernetes Service) |
 | `DB_PORT` | `5432` | Порт PostgreSQL |
 
-### Secret `db-credentials` (чутливі параметри)
+### Secret `db-credentials` — чутливі параметри
 
 | Параметр | Призначення |
-|---|---|
-| `DB_USER` | Користувач БД (використовується core_service та postgres) |
-| `DB_PASSWORD` | Пароль БД (**навчальне значення**, не реальний пароль) |
+| --- | --- |
+| `DB_USER` | Користувач бази даних |
+| `DB_PASSWORD` | Пароль бази даних (не зберігається у відкритому вигляді в шаблонах) |
 | `DB_NAME` | Назва бази даних |
-| `POSTGRES_PASSWORD` | Пароль ініціалізації контейнера PostgreSQL |
+| `POSTGRES_PASSWORD` | Пароль для ініціалізації контейнера PostgreSQL |
 
-Усі значення підключаються до контейнерів як змінні оточення
-(`envFrom`/`secretKeyRef` у Deployment). Перевірити потрапляння значень у
-контейнер: `kubectl exec -n incident-journal <pod> -- env | grep -E 'APP_ENV|DB_'`.
+Перевірити змінні оточення всередині Pod:
 
-## CI/CD
+```bash
+kubectl exec -n incident-journal <pod> -- env | grep -E 'APP_ENV|DB_'
 
-GitHub Actions (`.github/workflows/ci.yml`): lint (Ruff) → тести (з PostgreSQL
-сервісом) → збірка образів + сканування Trivy → публікація в GHCR.
+```
 
-Публікація відбувається при `push` у `main` (теги `sha`, `latest`) та при
-створенні git-тега `v*` (додається версійний тег, наприклад `v1.1.0` → `1.1.0`).
+---
+
+## CI/CD — GitHub Actions
+
+CI/CD реалізовано за допомогою GitHub Actions у файлі `.github/workflows/ci.yml`. Pipeline запускається при `push` у `main` та створенні PR:
+
+1. **Lint** — статичний аналіз коду за допомогою Ruff.
+2. **Тестування** — запуск тестів (`pytest`) із підключенням до PostgreSQL.
+3. **Збірка Docker-образів** — побудова та перевірка контейнерів.
+4. **Публікація в GHCR** — публікація образів у GitHub Container Registry при злитті в `main`.
+
+Образи сервісів:
+
+* `ghcr.io/markovoloshchuk/core_service`
+* `ghcr.io/markovoloshchuk/analytics_service`
+
+---
 
 ## Тести
 
-```bash
-# core_service потребує заповнений PostgreSQL (див. docker compose)
-cd core_service && pytest -v
+Запуск тестів локально:
 
-# analytics_service (без залежності від БД)
-cd analytics_service && pytest -v
+```bash
+# core_service (потребує запущеного PostgreSQL)
+cd core_service
+pytest -v
+
+```
+
+```bash
+# analytics_service
+cd analytics_service
+pytest -v
+
 ```
