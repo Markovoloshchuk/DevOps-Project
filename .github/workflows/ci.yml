@@ -1,10 +1,21 @@
 name: CI/CD
 
+
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'bootstrap/**'
+      - 'argocd-apps/**'
+      - 'charts/**'
+
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - 'bootstrap/**'
+      - 'argocd-apps/**'
+      - 'charts/**'
+
 
 permissions:
   contents: read

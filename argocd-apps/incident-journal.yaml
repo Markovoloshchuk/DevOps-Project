@@ -1,0 +1,27 @@
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: incident-journal
+  namespace: argocd
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Markovoloshchuk/DevOps-Project.git
+    targetRevision: lab5/gitops-argocd
+    path: charts/incident-journal
+    helm:
+      valueFiles:
+        - values-minikube.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: incident-journal
+
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
