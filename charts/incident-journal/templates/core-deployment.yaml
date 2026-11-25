@@ -1,3 +1,4 @@
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,17 +33,17 @@ spec:
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
-                  name: db-credentials
+                  name: {{ .Values.existingSecret | default "db-credentials" }}
                   key: DB_USER
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: db-credentials
+                  name: {{ .Values.existingSecret | default "db-credentials" }}
                   key: DB_PASSWORD
             - name: DB_NAME
               valueFrom:
                 secretKeyRef:
-                  name: db-credentials
+                  name: {{ .Values.existingSecret | default "db-credentials" }}
                   key: DB_NAME
           resources:
             {{- toYaml .Values.coreService.resources | nindent 12 }}
