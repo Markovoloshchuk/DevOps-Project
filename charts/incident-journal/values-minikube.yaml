@@ -1,0 +1,50 @@
+
+namespace: incident-journal
+environment: development
+
+# Core Service
+coreService:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/markovoloshchuk/core_service
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: NodePort
+    nodePort: 30080
+
+# Analytics Service
+analyticsService:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/markovoloshchuk/analytics_service
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: NodePort
+    nodePort: 30081
+
+# PostgreSQL
+postgresql:
+  replicaCount: 1
+  auth:
+    username: app
+    database: events_db
+  persistence:
+    enabled: true
+    size: 1Gi
+
+# Application configuration
+configMap:
+  appEnv: "development"
+  logLevel: "INFO"
+  defaultEventLevel: "info"
+  coreTimeout: "3.0"
+  appVersion: "1.0.0"
+
+# Secret will be created manually in Kubernetes
+existingSecret: incident-journal-secret
+
+# Ingress disabled for local Minikube
+ingress:
+  enabled: false
